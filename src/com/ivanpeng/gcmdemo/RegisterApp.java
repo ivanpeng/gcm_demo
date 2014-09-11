@@ -1,13 +1,23 @@
 package com.ivanpeng.gcmdemo;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.LinkedList;
+import java.util.List;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.utils.URIUtils;
+import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.message.BasicNameValuePair;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -36,7 +46,6 @@ public class RegisterApp extends AsyncTask<Void, Void, String> {
 	protected void onPreExecute() {
 		super.onPreExecute();
 	}
-
 
 	@Override
 	protected String doInBackground(Void... arg0) {
@@ -68,7 +77,13 @@ public class RegisterApp extends AsyncTask<Void, Void, String> {
 		}
 		return msg;
 	}
-
+    /**
+     * Stores the registration ID and the app versionCode in the application's
+     * {@code SharedPreferences}.
+     *
+     * @param context application's context.
+     * @param regId registration ID
+     */
 	private void storeRegistrationId(Context ctx, String regid) {
 		final SharedPreferences prefs = ctx.getSharedPreferences(MainActivity.class.getSimpleName(),
 				Context.MODE_PRIVATE);
@@ -82,24 +97,35 @@ public class RegisterApp extends AsyncTask<Void, Void, String> {
 
 
 	private void sendRegistrationIdToBackend() {
-		URI url = null;
-		try {
-			url = new URI("http://localhost/gcm_server/register.php?regId=" + regid);
-		} catch (URISyntaxException e) {
-			// TODO Auto-generated catch block
+		String urlStr;
+		urlStr = "http://localhost/gcm2/register.php";
+		Log.d(TAG, "Generating URL");
+
+		HttpClient httpClient = new DefaultHttpClient();
+		BufferedReader br = null;
+		try	{
+			HttpGet httpget =  new HttpGet(urlStr);
+			HttpResponse response = httpClient.execute(httpget);
+			HttpEntity entity = response.getEntity();
+			if (entity != null)	{
+				InputStream instream = entity.getContent();
+				StringBuilder sb= new StringBuilder();
+				String line;
+				br = new BufferedReader(new InputStreamReader(instream, "utf-8"));
+				while((line = br.readLine()) != null)	{
+					sb.append(line);
+				}
+				Log.d(TAG,sb.toString());
+			}
+		} catch (Exception e){
 			e.printStackTrace();
-		} 
-		HttpClient httpclient = new DefaultHttpClient();
-		HttpGet request = new HttpGet();
-		request.setURI(url);
-		try {
-			httpclient.execute(request);
-		} catch (ClientProtocolException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		} finally	{
+			if (br != null)
+				try	{
+					br.close();
+				} catch (IOException e)	{
+					e.printStackTrace();
+				}
 		}
 	}
 
